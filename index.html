@@ -439,7 +439,7 @@
       <h4>ℹ️ วิธีใช้งาน</h4>
       <ul>
         <li><b>Encode:</b> แปลงโค้ด Luau เป็น <code>\ddd</code> (decimal escape) ใน string literal</li>
-
+        
         <li>รองรับ emoji, ภาษาไทย, ภาษาจีน และอักขระพิเศษทุกชนิด</li>
         <li>ใช้ <b>Monaco Editor</b> (VS Code Engine) สำหรับไฮไลต์ Syntax แบบ GitHub Dark</li>
       </ul>
@@ -468,12 +468,12 @@
     const bytes = Array.from(new TextEncoder().encode(code));
     let dec = '';
     for (const b of bytes) {
-      dec += '\' + b.toString(10).padStart(3, '0');
+      dec += '\\' + b.toString(10).padStart(3, '0');
     }
     return 'loadstring("' + dec + '")()';
   }
 
-
+  
 
   function processCode() {
     if (!editorsReady) {
@@ -495,7 +495,7 @@
     }
   }
 
-  function copyOutput() {
+  async function copyOutput() {
     if (!editorsReady) return;
     const output = outputEditor.getValue();
     if (!output) {
@@ -503,43 +503,52 @@
       return;
     }
 
-    // Method 1: Modern Clipboard API
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(output).then(function() {
-        showStatus('📋 คัดลอกไปยังคลิปบอร์ดแล้ว!', '#3fb950');
-      }).catch(function(err) {
-        fallbackCopy(output);
-      });
-    } else {
-      fallbackCopy(output);
-    }
-  }
-
-  function fallbackCopy(text) {
-    // Method 2: execCommand (works on http & file://)
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    textarea.style.top = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-
     try {
-      const success = document.execCommand('copy');
-      document.body.removeChild(textarea);
-      if (success) {
-        showStatus('📋 คัดลอกไปยังคลิปบอร์ดแล้ว!', '#3fb950');
-      } else {
-        throw new Error('execCommand failed');
+      // ตรวจสอบ Permission ก่อน (modern pattern 2024-2026)
+      let permissionStatus;
+      try {
+        permissionStatus = await navigator.permissions.query({
+          name: 'clipboard-write'
+        });
+      } catch (e) {
+        // บาง browser ไม่รองรับ clipboard-write permission ให้ข้ามไปเลย
+        permissionStatus = { state: 'prompt' };
       }
+
+      if (permissionStatus.state === 'denied') {
+        showStatus('❌ ถูกปิดกั้นการเข้าถึงคลิปบอร์ด', '#f85149');
+        return;
+      }
+
+      // ใช้ ClipboardItem API (รูปแบบใหม่ล่าสุด 2026)
+      const clipboardItem = new ClipboardItem({
+        'text/plain': new Blob([output], { type: 'text/plain' })
+      });
+
+      await navigator.clipboard.write([clipboardItem]);
+
+      showStatus('📋 คัดลอกไปยังคลิปบอร์ดแล้ว!', '#3fb950');
     } catch (err) {
-      document.body.removeChild(textarea);
-      // Method 3: Select all in editor and prompt user
-      outputEditor.focus();
-      outputEditor.setSelection({startLineNumber:1, startColumn:1, endLineNumber:9999, endColumn:9999});
-      showStatus('📋 กด Ctrl+C เพื่อคัดลอก (เบราว์เซอร์บล็อก)', '#d29922');
+      // Fallback สำหรับกรณีที่ ClipboardItem ไม่รองรับ
+      try {
+        await navigator.clipboard.writeText(output);
+        showStatus('📋 คัดลอกแล้ว (fallback mode)!', '#d29922');
+      } catch (fallbackErr) {
+        // Fallback สุดท้าย: ใช้ textarea + execCommand
+        const textarea = document.createElement('textarea');
+        textarea.value = output;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          showStatus('📋 คัดลอกแล้ว (legacy fallback)!', '#d29922');
+        } catch (e) {
+          showStatus('❌ ไม่สามารถคัดลอกได้: ' + e.message, '#f85149');
+        }
+        document.body.removeChild(textarea);
+      }
     }
   }
 
@@ -688,7 +697,7 @@
     showStatus('✅ พร้อมใช้งาน — วางโค้ด Luau แล้วกดประมวลผล', '#3fb950');
   });
 
-
+  
 </script>
 </body>
-  </html>
+   </html>

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -39,7 +40,6 @@
     overflow-x: hidden;
   }
 
-  /* Animated gradient mesh background */
   .bg-mesh {
     position: fixed;
     inset: 0;
@@ -63,7 +63,6 @@
     padding: 40px 24px;
   }
 
-  /* Header */
   .header {
     text-align: center;
     margin-bottom: 40px;
@@ -99,7 +98,6 @@
     letter-spacing: 0.03em;
   }
 
-  /* Mode buttons */
   .mode-btns {
     display: flex;
     gap: 8px;
@@ -131,7 +129,6 @@
     box-shadow: 0 4px 16px var(--gh-accent-glow) !important;
   }
 
-  /* Editor grid */
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -223,7 +220,6 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Action buttons */
   .action-btns {
     margin-top: 24px;
     display: flex;
@@ -232,7 +228,7 @@
     flex-wrap: wrap;
   }
   .action-btns button {
-    padding: 12px 32px;
+    padding: 12px 28px;
     border: none;
     border-radius: 8px;
     font-weight: 600;
@@ -269,6 +265,15 @@
     box-shadow: 0 6px 24px rgba(88, 166, 255, 0.3);
     transform: translateY(-1px);
   }
+  .btn-download {
+    background: linear-gradient(135deg, var(--gh-purple), #8957e5);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(163, 113, 247, 0.2);
+  }
+  .btn-download:hover:not(:disabled) {
+    box-shadow: 0 6px 24px rgba(163, 113, 247, 0.3);
+    transform: translateY(-1px);
+  }
   .btn-clear {
     background: var(--gh-elevated);
     color: var(--gh-danger);
@@ -290,7 +295,6 @@
     letter-spacing: 0.01em;
   }
 
-  /* Info cards */
   .cards-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -341,7 +345,6 @@
   .card-info h4 { color: var(--gh-accent); }
   .card-info { border-left: 3px solid var(--gh-accent); }
 
-  /* Footer */
   .footer {
     text-align: center;
     margin-top: 40px;
@@ -355,6 +358,7 @@
     .grid { grid-template-columns: 1fr; }
     .cards-row { grid-template-columns: 1fr; }
     .header h1 { font-size: 1.8rem; }
+    .action-btns button { padding: 10px 20px; font-size: 0.8rem; }
   }
 </style>
 </head>
@@ -370,7 +374,7 @@
     </div>
   </div>
 
-    <div class="mode-badge" style="display:flex;justify-content:center;margin-bottom:24px;">
+  <div class="mode-badge" style="display:flex;justify-content:center;margin-bottom:24px;">
     <span style="padding:8px 20px;background:linear-gradient(135deg, var(--gh-accent), var(--gh-purple));color:#fff;border-radius:20px;font-size:0.8rem;font-weight:600;letter-spacing:0.03em;">🔒 Encode Mode</span>
   </div>
 
@@ -421,6 +425,7 @@
   <div class="action-btns">
     <button class="btn-process" id="btnProcess" onclick="processCode()" disabled>⚡ Obfuscate</button>
     <button class="btn-copy" id="btnCopy" onclick="copyOutput()" disabled>📋 Copy</button>
+    <button class="btn-download" id="btnDownload" onclick="downloadOutput()" disabled>📥 Download</button>
     <button class="btn-clear" id="btnClear" onclick="clearAll()" disabled>🗑️ New Script</button>
   </div>
 
@@ -439,9 +444,9 @@
       <h4>ℹ️ วิธีใช้งาน</h4>
       <ul>
         <li><b>Encode:</b> แปลงโค้ด Luau เป็น <code>\ddd</code> (decimal escape) ใน string literal</li>
-        
         <li>รองรับ emoji, ภาษาไทย, ภาษาจีน และอักขระพิเศษทุกชนิด</li>
         <li>ใช้ <b>Monaco Editor</b> (VS Code Engine) สำหรับไฮไลต์ Syntax แบบ GitHub Dark</li>
+        <li>ถ้าโค้ดยาวมาก <b>ให้กด Download</b> แทน Copy (Clipboard จำกัด ~5 MB)</li>
       </ul>
     </div>
   </div>
@@ -452,11 +457,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script>
-    let inputEditor, outputEditor;
+  let inputEditor, outputEditor;
   let editorsReady = false;
-
-    // Encode mode only
-
 
   function showStatus(msg, color) {
     const el = document.getElementById('statusMsg');
@@ -473,8 +475,6 @@
     return 'loadstring("' + dec + '")()';
   }
 
-  
-
   function processCode() {
     if (!editorsReady) {
       showStatus('⏳ รอ Editor โหลดเสร็จสิ้นก่อน', '#d29922');
@@ -488,7 +488,8 @@
     try {
       const result = luauEncode(input);
       outputEditor.setValue(result);
-      showStatus('✅ เข้ารหัสสำเร็จ! ขนาด: ' + input.length + ' → ' + result.length + ' ตัวอักษร', '#3fb950');
+      const sizeInfo = 'ขนาด: ' + input.length.toLocaleString() + ' → ' + result.length.toLocaleString() + ' ตัวอักษร';
+      showStatus('✅ เข้ารหัสสำเร็จ! ' + sizeInfo, '#3fb950');
     } catch (e) {
       outputEditor.setValue('// Error: ' + e.message);
       showStatus('❌ เกิดข้อผิดพลาด: ' + e.message, '#f85149');
@@ -503,15 +504,18 @@
       return;
     }
 
+    // ถ้าข้อความยาวมากกว่า 4 ล้านตัวอักษร (~4 MB) ให้ดาวน์โหลดเลย
+    if (output.length > 4000000) {
+      showStatus('📦 ไฟล์ใหญ่เกินไปสำหรับคลิปบอร์ด กำลังดาวน์โหลดแทน...', '#d29922');
+      downloadOutput();
+      return;
+    }
+
     try {
-      // ตรวจสอบ Permission ก่อน (modern pattern 2024-2026)
       let permissionStatus;
       try {
-        permissionStatus = await navigator.permissions.query({
-          name: 'clipboard-write'
-        });
+        permissionStatus = await navigator.permissions.query({ name: 'clipboard-write' });
       } catch (e) {
-        // บาง browser ไม่รองรับ clipboard-write permission ให้ข้ามไปเลย
         permissionStatus = { state: 'prompt' };
       }
 
@@ -520,36 +524,58 @@
         return;
       }
 
-      // ใช้ ClipboardItem API (รูปแบบใหม่ล่าสุด 2026)
       const clipboardItem = new ClipboardItem({
         'text/plain': new Blob([output], { type: 'text/plain' })
       });
 
       await navigator.clipboard.write([clipboardItem]);
-
       showStatus('📋 คัดลอกไปยังคลิปบอร์ดแล้ว!', '#3fb950');
     } catch (err) {
-      // Fallback สำหรับกรณีที่ ClipboardItem ไม่รองรับ
       try {
         await navigator.clipboard.writeText(output);
-        showStatus('📋 คัดลอกแล้ว (fallback mode)!', '#d29922');
+        showStatus('📋 คัดลอกแล้ว (fallback mode)!', '#3fb950');
       } catch (fallbackErr) {
-        // Fallback สุดท้าย: ใช้ textarea + execCommand
-        const textarea = document.createElement('textarea');
-        textarea.value = output;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-          document.execCommand('copy');
-          showStatus('📋 คัดลอกแล้ว (legacy fallback)!', '#d29922');
-        } catch (e) {
-          showStatus('❌ ไม่สามารถคัดลอกได้: ' + e.message, '#f85149');
+        // ถ้าล้มเหลวเพราะข้อมูลใหญ่ ให้ดาวน์โหลด
+        if (output.length > 1000000) {
+          showStatus('📦 ข้อมูลใหญ่เกินไป กำลังดาวน์โหลดเป็นไฟล์แทน...', '#d29922');
+          downloadOutput();
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = output;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            document.execCommand('copy');
+            showStatus('📋 คัดลอกแล้ว (legacy fallback)!', '#3fb950');
+          } catch (e) {
+            showStatus('❌ ไม่สามารถคัดลอกได้: ' + e.message, '#f85149');
+          }
+          document.body.removeChild(textarea);
         }
-        document.body.removeChild(textarea);
       }
     }
+  }
+
+  function downloadOutput() {
+    const output = outputEditor.getValue();
+    if (!output) {
+      showStatus('⚠️ ไม่มีข้อมูลให้ดาวน์โหลด', '#f85149');
+      return;
+    }
+    
+    const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kuohub_obfuscated.lua';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showStatus('📥 ดาวน์โหลดไฟล์ kuohub_obfuscated.lua แล้ว!', '#3fb950');
   }
 
   function clearAll() {
@@ -559,7 +585,6 @@
     showStatus('🗑️ ล้างข้อมูลทั้งหมดแล้ว', '#8b949e');
   }
 
-  // Monaco Editor Setup
   require.config({
     paths: {
       'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'
@@ -567,50 +592,39 @@
   });
 
   require(['vs/editor/editor.main'], function() {
-    // Define GitHub Dark theme for Lua
     monaco.editor.defineTheme('githubDark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        // Comments
         { token: 'comment', foreground: '8B949E', fontStyle: 'italic' },
         { token: 'comment.block', foreground: '8B949E', fontStyle: 'italic' },
-        // Keywords (function, local, if, then, else, end, return, while, do, for, in, repeat, until, not, and, or)
         { token: 'keyword', foreground: 'FF7B72', fontStyle: 'bold' },
         { token: 'keyword.local', foreground: 'FF7B72', fontStyle: 'bold' },
         { token: 'keyword.function', foreground: 'FF7B72', fontStyle: 'bold' },
         { token: 'keyword.return', foreground: 'FF7B72', fontStyle: 'bold' },
         { token: 'keyword.control', foreground: 'FF7B72', fontStyle: 'bold' },
-        // Strings
         { token: 'string', foreground: 'A5D6FF' },
         { token: 'string.escape', foreground: '79C0FF' },
         { token: 'string.lua', foreground: 'A5D6FF' },
-        // Numbers
         { token: 'number', foreground: '79C0FF' },
         { token: 'number.hex', foreground: '79C0FF' },
-        // Functions / Methods
         { token: 'function', foreground: 'D2A8FF' },
         { token: 'function.call', foreground: 'D2A8FF' },
         { token: 'method', foreground: 'D2A8FF' },
         { token: 'member', foreground: 'D2A8FF' },
-        // Identifiers / Variables
         { token: 'identifier', foreground: 'C9D1D9' },
         { token: 'variable', foreground: 'C9D1D9' },
         { token: 'variable.predefined', foreground: 'FFA657' },
         { token: 'variable.other', foreground: 'C9D1D9' },
-        // Operators
         { token: 'operator', foreground: 'FF7B72' },
         { token: 'operator.lua', foreground: 'FF7B72' },
-        // Types / Built-in
         { token: 'type', foreground: 'FFA657' },
         { token: 'type.builtin', foreground: 'FFA657' },
         { token: 'constant', foreground: '79C0FF' },
         { token: 'constant.language', foreground: '79C0FF' },
-        // Delimiters
         { token: 'delimiter', foreground: 'C9D1D9' },
         { token: 'delimiter.bracket', foreground: 'C9D1D9' },
         { token: 'delimiter.parenthesis', foreground: 'C9D1D9' },
-        // Tags (for other langs)
         { token: 'tag', foreground: '7EE787' },
         { token: 'attribute.name', foreground: 'D2A8FF' },
         { token: 'attribute.value', foreground: 'A5D6FF' },
@@ -692,12 +706,11 @@
     document.getElementById('outputLoading').style.display = 'none';
     document.getElementById('btnProcess').disabled = false;
     document.getElementById('btnCopy').disabled = false;
+    document.getElementById('btnDownload').disabled = false;
     document.getElementById('btnClear').disabled = false;
     editorsReady = true;
     showStatus('✅ พร้อมใช้งาน — วางโค้ด Luau แล้วกดประมวลผล', '#3fb950');
   });
-
-  
 </script>
 </body>
-   </html>
+</html>
